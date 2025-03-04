@@ -11,7 +11,7 @@ class Connect4:
         
         row = 5
         while row >= 0 and self.board[row][col] != 0:
-            row += 1
+            row -= 1
         
         self.board[row][col] = self.current_player
 
@@ -21,6 +21,13 @@ class Connect4:
         else:
             self.switch_player()
             return None
+
+    def get_winner(self, col):
+        row = 5
+        while row >= 0 and self.board[row][col] != 0:
+            row -= 1
+        _, winner = self.check_win(row + 1, col)
+        return winner
 
     def check_win(self, row, col):
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
@@ -48,13 +55,14 @@ class Connect4:
 
     def switch_player(self):
         self.current_player *= -1
-        self.board *= -1
+        self.board = [[-cell for cell in row] for row in self.board]
 
     def get_valid_moves(self):
         return [col for col in range(7) if self.board[0][col] == 0]
     
     def encode_state_cnn(self):
-        return torch.tensor(self.board, dtype=torch.bfloat16).unsqueeze(0).unsqueeze(0)
+        return torch.tensor(self.board, dtype=torch.float16).unsqueeze(0).unsqueeze(0)
     
     def encode_state_transformer(self):
         return [cell for row in self.board for cell in row]
+

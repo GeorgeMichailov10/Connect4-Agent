@@ -1,17 +1,14 @@
 from Board import Connect4
 from Models import CNNModel
+from MCTS import mcts, Node
 
 import torch
 from torch.amp import autocast
 
 model = CNNModel()
-model = model.to(torch.bfloat16)
+model = model.to(torch.float16)
+model.to('cuda')
 board = Connect4()
 
-state_tensor = board.encode_state_cnn()
-
-
-with autocast(device_type='cpu', dtype=torch.bfloat16):
-    policy, value = model(state_tensor)
-
-print(policy, value)
+best_move, search_tree = mcts(board, model, num_simulations=10)
+print("Best move:", best_move)
