@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 class CNNModel(nn.Module):
     def __init__(self):
+        super(CNNModel, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
 
@@ -16,12 +17,11 @@ class CNNModel(nn.Module):
 
         self.apply(self.__init_weights__)
 
-    def __init_weights__(self):
-        for m in self.modules():
-            if isinstance(m, (nn.Conv2d, nn.Linear)):
-                nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
+    def __init_weights__(self, m):
+        if isinstance(m, (nn.Conv2d, nn.Linear)):
+            nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         x = F.gelu(self.conv1(x))
