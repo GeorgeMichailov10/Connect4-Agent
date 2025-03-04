@@ -14,6 +14,15 @@ class CNNModel(nn.Module):
         self.value_fc1 = nn.Linear(1 * 6 * 7, 64)
         self.value_fc2 = nn.Linear(64, 1)
 
+        self.apply(self.__init_weights__)
+
+    def __init_weights__(self):
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
+                nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
     def forward(self, x):
         x = F.gelu(self.conv1(x))
         x = F.gelu(self.conv2(x))
