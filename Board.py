@@ -1,3 +1,5 @@
+import torch
+
 class Connect4:
     def __init__(self):
         self.board = [[0 for _ in range(7)] for _ in range(6)]
@@ -52,7 +54,7 @@ class Connect4:
         return [col for col in range(7) if self.board[0][col] == 0]
     
     def encode_state_cnn(self):
-        return self.board
+        return torch.tensor(self.board, dtype=torch.bfloat16).unsqueeze(0).unsqueeze(0)
     
     def encode_state_transformer(self):
         return [cell for row in self.board for cell in row]
