@@ -1,92 +1,142 @@
-import math
+from dataclasses import dataclass
+from Connect4 import Connect4
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-import copy
+import torch.nn.functional as F
 
-from Board import Connect4
+@dataclass
+class Config:
+    device = 'cuda'
+    exploration_constant = 2
+    temperature = 1.25
+    dirichlet_alpha = 1.
+    dirichlet_epsilon = 0.25
+
+    training_epochs = 150
+    games_per_epoch = 100
+    minibatch_size = 128
+    n_minibatches = 4
+
+    mcts_start_search_iter = 30
+    mcts_max_search_iter = 150
+    mcts_search_increment = 1
+
+class MCTS:
+    def __init__(self, model, game: Connect4, config: Config):
+        self.model = model
+        self.game = game
+        self.config = config
+
+    def get_model_evaluations(self, valid_actions, state_tensor):
+        with torch.no_grad():
+            self.model.eval()
+            value, logits = self.model(state_tensor)
+
+        action_probabilities = F.softmax(logits.view(self.game.cols), dim=0).cpu().numpy()
+        noise = np.random.dirichlet([self.config.dirichlet_alpha] * self.game.cols)
+        action_probabilities = ((1 - self.config.dirichlet_epsilon) * action_probabilities) + self.config.dirichlet_epsilon * noise
+
+        mask = np.full(self.game.cols, False)
+        mask[valid_actions] = True
+        action_probabilities = action_probabilities[mask]
+
+        action_probabilities /= np.sum(action_probabilities)
+
+        return action_probabilities, value
+
+    def search(self, state, total_iterations, temperature=None):
+        root = Node(None, state, 1, self.game, self.config)
+
+        # Step 1: Get Model evaluations on each move
+        valid_actions = self.game.get_valid_actions(state)
+        state_tensor = torch.tensor(self.game.encode_state_cnn(state), dtype=torch.float).unsqueeze(0).to(self.config.device)
+
+        action_probabilities, value = self.get_model_evaluations(valid_actions, state_tensor)
+
+        # Step 2: Create a child for each action with its prior probability
+        for action, probability in zip(valid_actions, action_probabilities):
+            child_state = -self.game.get_next_state(state, action)
+            root.children[action] = Node(root, child_state, -1, self.game, self.config)
+            root.children[action].prob = probability
+
+
+        root.node_visits = 1
+        root.total_score = value.item()
+
+        # Step 3: Search with similar process to what just done
+        for _ in range(total_iterations):
+            current_node = root
+            while not current_node.is_leaf():
+                current_node = current_node.select_child()
+
+                if not current_node.is_terminal():
+                    current_node.expand()
+                    valid_actions = self.game.get_valid_actions(current_node.state)
+                    state_tensor = torch.tensor(self.game.encode_state_cnn(current_node.state), dtype=torch.float).unsqueeze(0).to(self.config.device)
+
+                    action_probabilities, value = self.get_model_evaluations(valid_actions, state_tensor)
+
+                    
+
+        
+
+
 
 class Node:
-    def __init__(self, state: Connect4, prior, parent=None, move=None):
-        self.state = state
-        self.prior = prior
+    def __init__(self, parent, state, player: int, game: Connect4, config: Config):
         self.parent = parent
+        self.state = state
+        self.player = player
+        self.config = config
+        self.game = game
+
+        self.prob = 0
         self.children = {}
-        self.move = move
-        self.NODES = 0
-        self.EVALUATION = 0.0
-        self.MEAN = 0.0
+        self.node_visits = 0
+        self.total_score = 0
 
-    def is_terminal(self):
-        return len(self.state.get_valid_moves()) == 0
+    def expand(self):
+        valid_actions = self.game.get_valid_actions()
 
-    def legal_moves(self):
-        return self.state.get_valid_moves()
-
-    # Build the tree
-    def expand(self, model):
-        if self.is_terminal():
+        # If no more valid actions, no more exploration; set value and return
+        if len(valid_actions) == 0:
+            self.total_score = self.game.evaluate(self.state)
             return
-
-        moves = self.legal_moves()
-        state_tensor = self.state.encode_state_cnn()
-        state_tensor = state_tensor.to('cuda')
-        with torch.no_grad():
-            policy_logits, _ = model(state_tensor)
-        policy = torch.exp(policy_logits).squeeze(0).cpu().numpy()
-        for move in moves:
-            if move not in self.children:
-                new_state = copy.deepcopy(self.state)
-                new_state.make_move(move)
-                self.children[move] = Node(
-                    state=new_state,
-                    prior=policy[move],
-                    parent=self,
-                    move=move
-                )
-
-    def select_child(self, c_puct=1.0):
-        best_score = -float('inf')
-        best_move = None
-        best_child = None
-
-        total_N = sum(child.NODES for child in self.children.values()) # Exploration bonus
-        for move, child in self.children.items():
-            # PUCT: Q + c_puct * p * sqrt(total_N) / (1 + N)
-            curr_score = child.MEAN + c_puct * child.prior * math.sqrt(total_N) / (1 + child.NODES)
-            if curr_score > best_score:
-                best_score = curr_score
-                best_move = move
-                best_child = child
-        return best_move, best_child
         
+        # Create a child for each action
+        for action in valid_actions:
+            child_state = -self.game.get_next_state(self.state, action)
+            self.children[action] = Node(self, child_state, -self.player, self.game, self.config)
+
+    def select_child(self):
+        best_puct = -np.inf
+        best_child = None
+        for child in self.children.values():
+            puct = self.calculate_puct(child)
+            if puct > best_puct:
+                best_puct = puct
+                best_child = child
+        return best_child
+    
     def backprop(self, value):
-        self.NODES += 1
-        self.EVALUATION += value
-        self.MEAN = self.EVALUATION / self.NODES
+        self.total_score += value
+        self.node_visits += 1
         if self.parent is not None:
             self.parent.backprop(-value)
+
+    def is_leaf(self):
+        return len(self.children) == 0
     
-def mcts(root_state: Connect4, model, num_simulations=100, c_puct=1.0):
-    root = Node(state=root_state, prior=1.0)
-    root.expand(model)
+    def is_terminal(self):
+        return (self.node_visits != 0) and (len(self.children) == 0)
 
-    for epoch in range(num_simulations):
-        node = root
-        while node.children:
-            _, node = node.select_child(c_puct)
-
-            if not node.is_terminal() and not node.children:
-                node.expand(model)
-
-        if node.is_terminal():
-            value = node.state.get_winner(col=node.move)
-        else:
-            state_tensor = node.state.encode_state_cnn()
-            state_tensor = state_tensor.to('cuda')
-            with torch.no_grad():
-                _, value_tensor = model(state_tensor)
-            value = value_tensor.item()
-        node.backprop(value) 
-    best_move = max(root.children.items(), key=lambda item: item[1].NODES)[0]
-    return best_move, root   
+    def get_value(self):
+        if self.node_visits == 0:
+            return 0
+        return self.total_score / self.node_visits
+    
+    def __str__(self):
+        return (f"State:\n{self.state}\nProb: {self.prob}\nTo play: {self.to_play}" +
+                f"\nNumber of children: {len(self.children)}\nNumber of visits: {self.n_visits}" +
+                f"\nTotal score: {self.total_score}")
