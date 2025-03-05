@@ -40,6 +40,7 @@ class AlphaZero:
     def self_play(self):
         state = self.game.reset()
         done = False
+        move_counter = 0
         while not done:
             action, root = self.mcts.search(state, self.search_iterations)
             value = root.get_value()
@@ -49,7 +50,9 @@ class AlphaZero:
             visits /= np.sum(visits)
             self.append_to_memory(state, value, visits)
 
-            if self.memory_full:
+            move_counter += 1
+
+            if self.memory_full or move_counter % 50 == 0:
                 self.learn()
 
             state, _, done = self.game.play_action(state, action)
