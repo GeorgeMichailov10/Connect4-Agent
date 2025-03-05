@@ -14,8 +14,8 @@ class Connect4:
     
     def get_valid_actions(self, state):
         if self.evaluate(state) != 0:
-            return np.array([])
-        return np.array([col for col in range(state.shape[1]) if state[0][col] == 0])
+            return np.array([], dtype=int)
+        return np.array([col for col in range(state.shape[1]) if state[0][col] == 0], dtype=int)
     
     def evaluate(self, state):
         filter = np.ones((1, 4), dtype=int)
@@ -35,7 +35,7 @@ class Connect4:
     def play_action(self, state, action, player=1):
         next_state = self.get_next_state(state, action, player)
         game_score = self.evaluate(next_state)
-        done = True if game_score != 0 or len(self.get_valid_actions()) == 0 else False
+        done = True if game_score != 0 or len(self.get_valid_actions(state)) == 0 else False
         return next_state, game_score, done
     
     def encode_state_cnn(self, state):
@@ -49,3 +49,6 @@ class Connect4:
         tokens = np.moveaxis(three_channel_state, 0, -1)
         tokens = tokens.reshape(-1, 3)
         return tokens  # Returns (self.rows * self.cols, 3)
+    
+    def reset(self):
+        return np.zeros([self.rows, self.cols], dtype=np.int8)

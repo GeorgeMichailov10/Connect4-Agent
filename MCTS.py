@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
 
 @dataclass
 class Config:
@@ -17,6 +18,7 @@ class Config:
     games_per_epoch = 100
     minibatch_size = 128
     n_minibatches = 4
+    learning_rate = 0.001
 
     mcts_start_search_iter = 30
     mcts_max_search_iter = 150
@@ -35,7 +37,7 @@ class MCTS:
 
         probabilities = F.softmax(logits.view(self.game.cols), dim=0).cpu().numpy()
         noise = np.random.dirichlet([self.config.dirichlet_alpha] * self.game.cols)
-        probabilities = ((1 - self.config.dirichlet_epsilon) * action_probabilities) + self.config.dirichlet_epsilon * noise
+        probabilities = ((1 - self.config.dirichlet_epsilon) * probabilities) + self.config.dirichlet_epsilon * noise
 
         mask = np.full(self.game.cols, False)
         mask[valid_actions] = True
@@ -91,7 +93,7 @@ class MCTS:
     def select_action(self, root, temperature=None):
         if temperature == None:
             temperature = self.config.temperature
-        action_counts = {key : val.node_vists for key, val in root.children.items()}
+        action_counts = {key : val.node_visits for key, val in root.children.items()}
         if temperature == 0:
             return max(action_counts, key=action_counts.get)
         elif temperature == np.inf:
@@ -114,7 +116,7 @@ class Node:
         self.total_score = 0
 
     def expand(self):
-        valid_actions = self.game.get_valid_actions()
+        valid_actions = self.game.get_valid_actions(self.state)
 
         # If no more valid actions, no more exploration; set value and return
         if len(valid_actions) == 0:
@@ -135,6 +137,11 @@ class Node:
                 best_puct = puct
                 best_child = child
         return best_child
+    
+    def calculate_puct(self, child):
+        exploitation_term = 1 - (child.get_value() + 1) / 2
+        exploration_term = child.prob * math.sqrt(self.node_visits) / (child.node_visits + 1)
+        return exploitation_term + self.config.exploration_constant * exploration_term
     
     def backprop(self, value):
         self.total_score += value

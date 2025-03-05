@@ -5,7 +5,7 @@ import torch.nn.functional as F
 class CNNModel(nn.Module):
     def __init__(self):
         super(CNNModel, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
 
         self.policy_conv = nn.Conv2d(64, 2, kernel_size=1)
@@ -37,4 +37,4 @@ class CNNModel(nn.Module):
         v = F.gelu(self.value_fc1(v))
         v = torch.tanh(self.value_fc2(v))
 
-        return p, v
+        return v, p
