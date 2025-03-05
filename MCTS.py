@@ -33,13 +33,13 @@ class MCTS:
             self.model.eval()
             value, logits = self.model(state_tensor)
 
-        action_probabilities = F.softmax(logits.view(self.game.cols), dim=0).cpu().numpy()
+        probabilities = F.softmax(logits.view(self.game.cols), dim=0).cpu().numpy()
         noise = np.random.dirichlet([self.config.dirichlet_alpha] * self.game.cols)
-        action_probabilities = ((1 - self.config.dirichlet_epsilon) * action_probabilities) + self.config.dirichlet_epsilon * noise
+        probabilities = ((1 - self.config.dirichlet_epsilon) * action_probabilities) + self.config.dirichlet_epsilon * noise
 
         mask = np.full(self.game.cols, False)
         mask[valid_actions] = True
-        action_probabilities = action_probabilities[mask]
+        action_probabilities = probabilities[mask]
 
         action_probabilities /= np.sum(action_probabilities)
 
@@ -51,14 +51,13 @@ class MCTS:
         # Step 1: Get Model evaluations on each move
         valid_actions = self.game.get_valid_actions(state)
         state_tensor = torch.tensor(self.game.encode_state_cnn(state), dtype=torch.float).unsqueeze(0).to(self.config.device)
-
         action_probabilities, value = self.get_model_evaluations(valid_actions, state_tensor)
 
         # Step 2: Create a child for each action with its prior probability
-        for action, probability in zip(valid_actions, action_probabilities):
+        for action, prob in zip(valid_actions, action_probabilities):
             child_state = -self.game.get_next_state(state, action)
             root.children[action] = Node(root, child_state, -1, self.game, self.config)
-            root.children[action].prob = probability
+            root.children[action].prob = prob
 
 
         root.node_visits = 1
@@ -74,14 +73,32 @@ class MCTS:
                     current_node.expand()
                     valid_actions = self.game.get_valid_actions(current_node.state)
                     state_tensor = torch.tensor(self.game.encode_state_cnn(current_node.state), dtype=torch.float).unsqueeze(0).to(self.config.device)
-
                     action_probabilities, value = self.get_model_evaluations(valid_actions, state_tensor)
 
-                    
+                    for action, prob in zip(valid_actions, action_probabilities):
+                        if action not in current_node.children:
+                            child_state = -self.game.get_next_state(current_node.state, action)
+                            current_node.children[action] = Node(current_node, child_state, -current_node.player, self.game, self.config)
+                        current_node.children[action].prob = prob
+                else:
+                    value = self.game.evaluate(current_node.state)
+                current_node.backprop(value)
+        if temperature is None:
+            temperature = self.config.temperature
+        selected_action = self.select_action(root, temperature)
+        return selected_action, root
 
-        
-
-
+    def select_action(self, root, temperature=None):
+        if temperature == None:
+            temperature = self.config.temperature
+        action_counts = {key : val.node_vists for key, val in root.children.items()}
+        if temperature == 0:
+            return max(action_counts, key=action_counts.get)
+        elif temperature == np.inf:
+            return np.random.choice(list(action_counts.keys()))
+        else:
+            distribution = np.array([*action_counts.values()]) ** (1 / temperature)
+            return np.random.choice([*action_counts.keys()], p=distribution/sum(distribution))
 
 class Node:
     def __init__(self, parent, state, player: int, game: Connect4, config: Config):
