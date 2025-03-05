@@ -1,0 +1,51 @@
+import numpy as np
+from scipy.signal import convolve2d
+
+class Connect4:
+    def __init__(self):
+        self.rows = 6
+        self.cols = 7
+
+    def get_next_state(self, state, action, player_value=1):
+        row = np.where(state[:, action] == 0)[0][-1]
+        new_state = state.copy()
+        new_state[row, action] = player_value
+        return new_state
+    
+    def get_valid_actions(self, state):
+        if self.evaluate(state) != 0:
+            return np.array([])
+        return np.array([col for col in range(state.shape[1]) if state[0][col] == 0])
+    
+    def evaluate(self, state):
+        filter = np.ones((1, 4), dtype=int)
+        horizontal_check = convolve2d(state, filter, mode='valid')
+        vertical_check = convolve2d(state, filter.T, mode='valid')
+
+        diagonal_filter = np.eye(4, dtype=int)
+        diagonal1_check = convolve2d(state, diagonal_filter, mode='valid')
+        diagonal2_check = convolve2d(state, np.fliplr(diagonal_filter), mode='valid')
+
+        if any(cond.any() for cond in [horizontal_check == 4, vertical_check == 4, diagonal1_check == 4, diagonal2_check == 4]):
+            return 1
+        elif any(cond.any() for cond in [horizontal_check == -4, vertical_check == -4, diagonal1_check == -4, diagonal2_check == -4]):
+            return -1
+        return 0
+    
+    def play_action(self, state, action, player=1):
+        next_state = self.get_next_state(state, action, player)
+        game_score = self.evaluate(next_state)
+        done = True if game_score != 0 or len(self.get_valid_actions()) == 0 else False
+        return next_state, game_score, done
+    
+    def encode_state_cnn(self, state):
+        three_channel_state = np.stack((state == 1, state == 0, state == -1)).astype(np.float16)
+        if len(state.shape) == 3:
+            three_channel_state = np.swapaxes(three_channel_state, 0, 1)
+        return three_channel_state
+    
+    def encode_state_transformer(self, state):
+        three_channel_state = np.stack((state == 1, state == 0, state == -1)).astype(np.float16)
+        tokens = np.moveaxis(three_channel_state, 0, -1)
+        tokens = tokens.reshape(-1, 3)
+        return tokens  # Returns (self.rows * self.cols, 3)
