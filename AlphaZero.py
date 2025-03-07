@@ -8,7 +8,7 @@ import numpy as np
 
 class AlphaZero:
     def __init__(self, game: Connect4, config: Config, verbose=True):
-        self.model = CNNModel().to(config.device)
+        self.model = CNNModel(config).to(config.device)
         self.mcts = MCTS(self.model, game, config)
         self.game = game
         self.config = config

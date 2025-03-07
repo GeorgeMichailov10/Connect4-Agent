@@ -15,10 +15,14 @@ class Config:
     dirichlet_epsilon = 0.25
 
     training_epochs = 50
-    games_per_epoch = 10
-    minibatch_size = 64
+    games_per_epoch = 5
+    minibatch_size = 128
     n_minibatches = 4
     learning_rate = 0.005
+    n_filters = 256
+    n_res_blocks = 4
+    n_cols = 7
+    n_rows = 6
 
     mcts_start_search_iter = 25
     mcts_max_search_iter = 50
