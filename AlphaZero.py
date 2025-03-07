@@ -58,10 +58,10 @@ class AlphaZero:
             state, _, done = self.game.play_action(state, action)
             state = -state
 
-            self.total_games += 1
-
+        
             if self.verbose:
                 print("\rTotal Games:", self.total_games, "Items in Memory:", self.current_memory_index, "Search Iterations:", self.search_iterations, end="")
+        self.total_games += 1
 
     def append_to_memory(self, state, value, visits):
         encoded_state = np.array(self.game.encode_state_cnn(state))

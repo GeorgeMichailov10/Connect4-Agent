@@ -15,7 +15,7 @@ class Config:
     dirichlet_epsilon = 0.25
 
     training_epochs = 50
-    games_per_epoch = 50
+    games_per_epoch = 10
     minibatch_size = 64
     n_minibatches = 4
     learning_rate = 0.005
