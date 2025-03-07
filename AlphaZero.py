@@ -52,7 +52,7 @@ class AlphaZero:
 
             move_counter += 1
 
-            if self.memory_full or move_counter % 50 == 0:
+            if self.memory_full or move_counter % 5 == 0:
                 self.learn()
 
             state, _, done = self.game.play_action(state, action)

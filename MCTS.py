@@ -14,14 +14,14 @@ class Config:
     dirichlet_alpha = 1.
     dirichlet_epsilon = 0.25
 
-    training_epochs = 150
-    games_per_epoch = 100
-    minibatch_size = 128
+    training_epochs = 50
+    games_per_epoch = 50
+    minibatch_size = 64
     n_minibatches = 4
-    learning_rate = 0.001
+    learning_rate = 0.005
 
-    mcts_start_search_iter = 30
-    mcts_max_search_iter = 150
+    mcts_start_search_iter = 25
+    mcts_max_search_iter = 50
     mcts_search_increment = 1
 
 class MCTS:
