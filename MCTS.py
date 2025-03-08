@@ -17,8 +17,8 @@ class Config:
     dirichlet_alpha = 1.
     dirichlet_epsilon = 0.25
 
-    training_epochs = 50
-    games_per_epoch = 15
+    training_epochs = 100
+    games_per_epoch = 25
     minibatch_size = 128
     n_minibatches = 4
     learning_rate = 0.005
@@ -27,7 +27,7 @@ class Config:
     n_cols = 7
     n_rows = 6
 
-    mcts_start_search_iter = 50
+    mcts_start_search_iter = 75
     mcts_max_search_iter = 150
     mcts_search_increment = 1
 
