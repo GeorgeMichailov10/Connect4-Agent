@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from numba import cuda, int32
 
 @dataclass
 class Config:

@@ -5,6 +5,7 @@ from Models import CNNModel
 import torch
 import torch.nn as nn
 import numpy as np
+import concurrent.futures as cf
 
 class AlphaZero:
     def __init__(self, game: Connect4, config: Config, verbose=True):
