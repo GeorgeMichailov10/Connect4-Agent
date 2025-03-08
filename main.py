@@ -17,7 +17,7 @@ evaluator.evaluate()
 
 # Main training/eval loop
 for _ in range(config.training_epochs):
-    alphazero.train(1)
+    alphazero.train()
     evaluator.evaluate()
 
 # Save trained weights

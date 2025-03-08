@@ -15,18 +15,18 @@ class Evaluator:
         self.generate_examples()
 
     def select_action(self, state):
-        valid_actions = self.game.get_valid_actions(state)
+        valid_actions = self.game[0].get_valid_actions(state)
         if len(valid_actions) == 0:
             return None
         
         for action in valid_actions:
-            next_state, reward, _ = self.game.play_action(state, action)
+            next_state, reward, _ = self.game[0].play_action(state, action)
             if reward == 1:
                 return action
 
         flipped_state = -state
         for action in valid_actions:
-            next_state, reward, _ = self.game.play_action(flipped_state, action)
+            next_state, reward, _ = self.game[0].play_action(flipped_state, action)
             if reward == 1:
                 return action
 
@@ -42,19 +42,19 @@ class Evaluator:
         target_states = np.concatenate([winning_example_states, blocking_example_states], axis=0)
         target_actions = np.concatenate([winning_example_actions, blocking_example_actions], axis=0)
 
-        encoded_states = [self.game.encode_state_cnn(state) for state in target_states]
+        encoded_states = [self.game[0].encode_state_cnn(state) for state in target_states]
         self.X_target = torch.tensor(np.stack(encoded_states, axis=0), dtype=torch.float).to(self.config.device)
         self.y_target = torch.tensor(target_actions, dtype=torch.long).to(self.config.device)
 
     def generate_examples_for_condition(self, condition):
         examples = []
         while len(examples) < self.num_examples:
-            state = self.game.reset()
+            state = self.game[0].reset()
             while True:
                 action = self.select_action(state)
                 if action is None:
                     break
-                next_state, reward, done = self.game.play_action(state, action, player=1)                
+                next_state, reward, done = self.game[0].play_action(state, action, player=1)                
                 if condition == 'win' and reward == 1:
                     examples.append((state, action))
                     break                
@@ -64,7 +64,7 @@ class Evaluator:
                 action = self.select_action(-state)
                 if action is None:
                     break
-                next_state, reward, done = self.game.play_action(state, action, player=-1)               
+                next_state, reward, done = self.game[0].play_action(state, action, player=-1)               
                 if condition == 'block' and reward == -1:
                     examples.append((-state, action))
                     break                

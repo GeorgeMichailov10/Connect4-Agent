@@ -6,13 +6,18 @@ import torch
 import torch.nn as nn
 import numpy as np
 import concurrent.futures as cf
+import threading
 
 class AlphaZero:
     def __init__(self, game: Connect4, config: Config, verbose=True):
-        self.model = CNNModel(config).to(config.device)
-        self.mcts = MCTS(self.model, game, config)
-        self.game = game
+        self.model_mutex = threading.Lock()
+        self.memory_mutex = threading.Lock()
+        self.total_games_mutex = threading.Lock()
+
         self.config = config
+        self.model = CNNModel(config).to(config.device)
+        self.game = [Connect4() for _ in range(self.config.cpu_threads)]
+        self.mcts = [MCTS(self.model, self.game[instance], config, self.model_mutex) for instance in range(self.config.cpu_threads)]
 
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction='mean')
@@ -32,37 +37,33 @@ class AlphaZero:
         self.verbose = verbose
         self.total_games = 0
 
-    def train(self, training_epochs):
-        for _ in range(training_epochs):
-            for _ in range(self.config.games_per_epoch):
-                self.self_play()
-            self.search_iterations = min(self.config.mcts_max_search_iter, self.search_iterations + self.config.mcts_search_increment)
+    def train(self):
+        with cf.ThreadPoolExecutor(max_workers=self.config.cpu_threads) as executor:
+            futures = [executor.submit(self.self_play, thread_id) for thread_id in range(self.config.cpu_threads)]
+            cf.wait(futures)
+        self.learn()
+        self.search_iterations = min(self.config.mcts_max_search_iter, self.search_iterations + self.config.mcts_search_increment)
 
-    def self_play(self):
-        state = self.game.reset()
+    def self_play(self, thread_id):
+        state = self.game[thread_id].reset()
         done = False
-        move_counter = 0
         while not done:
-            action, root = self.mcts.search(state, self.search_iterations)
+            action, root = self.mcts[thread_id].search(state, self.search_iterations)
             value = root.get_value()
-            visits = np.zeros(self.game.cols)
+            visits = np.zeros(self.config.n_cols)
             for child_action, child in root.children.items():
                 visits[child_action] = child.node_visits
             visits /= np.sum(visits)
             self.append_to_memory(state, value, visits)
 
-            move_counter += 1
-
-            if self.memory_full or move_counter % 5 == 0:
-                self.learn()
+            if self.memory_full:
+                return
 
             state, _, done = self.game.play_action(state, action)
             state = -state
 
-        
-            if self.verbose:
-                print("\rTotal Games:", self.total_games, "Items in Memory:", self.current_memory_index, "Search Iterations:", self.search_iterations, end="")
-        self.total_games += 1
+        with self.total_games_mutex:
+            self.total_games += 1
 
     def append_to_memory(self, state, value, visits):
         encoded_state = np.array(self.game.encode_state_cnn(state))
@@ -76,13 +77,16 @@ class AlphaZero:
         value_scalar = value.cpu().item()
         value_tensor = torch.tensor([value_scalar, value_scalar], dtype=torch.float).to(self.config.device).unsqueeze(1)
 
-        self.state_memory[self.current_memory_index:self.current_memory_index + 2] = state_tensor
-        self.value_memory[self.current_memory_index:self.current_memory_index + 2] = value_tensor
-        self.policy_memory[self.current_memory_index:self.current_memory_index + 2] = visits_tensor
-
-        self.current_memory_index = (self.current_memory_index + 2) % self.max_memory
-        if (self.current_memory_index == 0) or (self.current_memory_index == 1):
-            self.memory_full = True
+        with self.memory_mutex:
+            if self.memory_full:
+                return
+            
+            self.state_memory[self.current_memory_index:self.current_memory_index + 2] = state_tensor
+            self.value_memory[self.current_memory_index:self.current_memory_index + 2] = value_tensor
+            self.policy_memory[self.current_memory_index:self.current_memory_index + 2] = visits_tensor
+            self.current_memory_index = (self.current_memory_index + 2) % self.max_memory
+            if (self.current_memory_index == 0) or (self.current_memory_index == 1):
+                self.memory_full = True
 
     def learn(self):
         self.model.train()

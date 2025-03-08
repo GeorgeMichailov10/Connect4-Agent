@@ -5,17 +5,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-from numba import cuda, int32
+import threading
 
 @dataclass
 class Config:
+    cpu_threads = 15
+
     device = 'cuda'
     exploration_constant = 2
     temperature = 1.25
     dirichlet_alpha = 1.
     dirichlet_epsilon = 0.25
 
-    training_epochs = 150
+    training_epochs = 50
     games_per_epoch = 15
     minibatch_size = 128
     n_minibatches = 4
@@ -30,15 +32,17 @@ class Config:
     mcts_search_increment = 1
 
 class MCTS:
-    def __init__(self, model, game: Connect4, config: Config):
+    def __init__(self, model, game: Connect4, config: Config, model_lock: threading.Lock):
         self.model = model
         self.game = game
         self.config = config
+        self.model_lock = model_lock
 
     def get_model_evaluations(self, valid_actions, state_tensor):
-        with torch.no_grad():
-            self.model.eval()
-            value, logits = self.model(state_tensor)
+        with self.model_lock:
+            with torch.no_grad():
+                self.model.eval()
+                value, logits = self.model(state_tensor)
 
         probabilities = F.softmax(logits.view(self.game.cols), dim=0).cpu().numpy()
         noise = np.random.dirichlet([self.config.dirichlet_alpha] * self.game.cols)
