@@ -8,6 +8,8 @@ import math
 
 @dataclass
 class Config:
+    cpu_procs = 20
+
     device = 'cuda'
     exploration_constant = 2
     temperature = 1.25
