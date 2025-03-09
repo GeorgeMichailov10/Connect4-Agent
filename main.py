@@ -16,12 +16,11 @@ evaluator = Evaluator(alphazero)
 evaluator.evaluate()
 
 # Main training/eval loop
-for _ in range(config.training_epochs):
+for epoch in range(config.training_epochs):
     alphazero.train(1)
-    evaluator.evaluate()
-
-# Save trained weights
-torch.save(alphazero.network.state_dict(), 'alphazero-network-weights.pth')
+    accuracy = evaluator.evaluate()
+    if accuracy > 800:
+        torch.save(alphazero.network.state_dict(), f'./models/cnn_{epoch}_{accuracy}.pth')
 
 x_values = np.linspace(0, 101 * len(evaluator.accuracies), len(evaluator.accuracies))
 y_values = [acc * 100 for acc in evaluator.accuracies]

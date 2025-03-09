@@ -81,4 +81,5 @@ class Evaluator:
             accuracy = (pred_actions == self.y_target).float().mean().item()     
         self.accuracies.append(accuracy)
         if self.verbose:
-            print(f"Initial Evaluation Accuracy: {100 * accuracy:.1f}%")    
+            print(f"Initial Evaluation Accuracy: {100 * accuracy:.1f}%")
+        return int(1000 * accuracy)    

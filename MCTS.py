@@ -18,7 +18,7 @@ class Config:
     games_per_epoch = 100
     minibatch_size = 128
     n_minibatches = 4
-    learning_rate = 0.001
+    learning_rate = 0.005
 
     mcts_start_search_iter = 30
     mcts_max_search_iter = 150
