@@ -7,11 +7,11 @@ from Evaluator import Evaluator
 from MCTS import MCTS, Config
 from Models import CNNModel
 
-@ray.remote(num_gpus=0.1)
+@ray.remote(num_gpus=0.15)
 class SampleGeneratorWorker:
     def __init__(self, config: Config, model_state_dict_ref):
         self.config = config
-        self.model = CNNModel().to(self.config.device)
+        self.model = CNNModel(config).to(self.config.device)
         if isinstance(model_state_dict_ref, ray.ObjectRef):
             state_dict = ray.get(model_state_dict_ref)
         else:
@@ -52,7 +52,7 @@ class SampleGeneratorWorker:
 
 class AlphaZero2:
     def __init__(self, game: Connect4, config: Config, verbose=True):
-        self.model = CNNModel().to(config.device)
+        self.model = CNNModel(config).to(config.device)
         self.mcts = MCTS(self.model, game, config)
         self.game = game
         self.config = config
