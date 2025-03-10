@@ -1,4 +1,5 @@
 from AlphaZero import AlphaZero
+from AlphaZero2 import AlphaZero2
 from Connect4 import Connect4
 from Evaluator import Evaluator
 from MCTS import MCTS, Config
@@ -9,30 +10,8 @@ import numpy as np
 
 config = Config()
 game = Connect4()
-alphazero = AlphaZero(game, config)
-evaluator = Evaluator(alphazero)
+alphazero = AlphaZero2(game, config)
 
-# Evaluate pre training
-evaluator.evaluate()
 
-# Main training/eval loop
 for epoch in range(config.training_epochs):
     alphazero.train(1)
-    accuracy = evaluator.evaluate()
-    if accuracy > 800:
-        torch.save(alphazero.network.state_dict(), f'./models/cnn_{epoch}_{accuracy}.pth')
-
-x_values = np.linspace(0, 101 * len(evaluator.accuracies), len(evaluator.accuracies))
-y_values = [acc * 100 for acc in evaluator.accuracies]
-
-# Create plot
-plt.figure(figsize=(10, 6))
-plt.plot(x_values, y_values, linewidth=2, marker='o', markersize=4, linestyle='-', color='#636EFA')
-
-# Formatting
-plt.xlabel('\nNumber of Games', fontsize=16)
-plt.ylabel('Policy Evaluation Accuracy (%)', fontsize=16)
-plt.title('Policy Evaluation\n', fontsize=24)
-plt.grid(True, linestyle='--', linewidth=0.5, color='gray')
-
-plt.show()

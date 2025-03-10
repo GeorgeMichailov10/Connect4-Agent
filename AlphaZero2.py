@@ -65,7 +65,7 @@ class AlphaZero2:
         self.verbose = verbose
         self.total_games = 0
 
-        self.Evaluator = Evaluator()
+        self.Evaluator = Evaluator(config)
 
         ray.init(ignore_reinit_error=True)
         self.num_workers = self.config.cpu_procs
