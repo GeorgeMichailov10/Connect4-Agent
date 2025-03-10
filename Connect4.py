@@ -7,6 +7,9 @@ class Connect4:
         self.cols = 7
 
     def get_next_state(self, state, action, player_value=1):
+        legal_moves = self.get_valid_actions(state)
+        if action not in legal_moves:
+            return None
         row = np.where(state[:, action] == 0)[0][-1]
         new_state = state.copy()
         new_state[row, action] = player_value
@@ -34,6 +37,8 @@ class Connect4:
     
     def play_action(self, state, action, player=1):
         next_state = self.get_next_state(state, action, player)
+        if next_state == None:
+            return None, 0, True
         game_score = self.evaluate(next_state)
         done = True if game_score != 0 or len(self.get_valid_actions(state)) == 0 else False
         return next_state, game_score, done
