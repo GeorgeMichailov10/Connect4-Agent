@@ -77,8 +77,10 @@ class AlphaZero2:
 
     def train(self):
         for epoch in range(self.config.training_epochs):
-            futures = [worker.self_play_loop.remote() for worker in self.workers]
+            print(f"Starting epoch {epoch}")
+            futures = [worker.self_play.remote() for worker in self.workers]
             results = ray.get(futures)
+            print(f"All worker threads have returned.")
             for worker_samples in results:
                 for sample in worker_samples:
                     self.append_to_memory(*sample)
@@ -86,6 +88,7 @@ class AlphaZero2:
                         self.learn()
 
                         model_performance = self.Evaluator.evaluate(self.model)
+                        print(f"Model accuracy: {model_performance / 10}%")
                         if model_performance > 800:
                             torch.save(self.model.state_dict(), f'./models/cnn_{epoch}_{model_performance}.pth')
                         

@@ -45,6 +45,7 @@ class Evaluator:
         encoded_states = [self.game.encode_state_cnn(state) for state in target_states]
         self.X_target = torch.tensor(np.stack(encoded_states, axis=0), dtype=torch.float).to(self.config.device)
         self.y_target = torch.tensor(target_actions, dtype=torch.long).to(self.config.device)
+        print('Done generating samples.')
 
     def generate_examples_for_condition(self, condition):
         examples = []

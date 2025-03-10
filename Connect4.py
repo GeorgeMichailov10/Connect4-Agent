@@ -37,7 +37,7 @@ class Connect4:
     
     def play_action(self, state, action, player=1):
         next_state = self.get_next_state(state, action, player)
-        if next_state == None:
+        if next_state is None:
             return None, 0, True
         game_score = self.evaluate(next_state)
         done = True if game_score != 0 or len(self.get_valid_actions(state)) == 0 else False
