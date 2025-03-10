@@ -19,8 +19,8 @@ class Config:
     training_epochs = 150
     games_per_epoch = 100
     minibatch_size = 128
-    n_minibatches = 4
-    learning_rate = 0.005
+    n_minibatches = 8
+    learning_rate = 0.001
 
     n_cols = 7
     n_rows = 6
@@ -98,7 +98,16 @@ class MCTS:
     def select_action(self, root, temperature=None):
         if temperature == None:
             temperature = self.config.temperature
+        
         action_counts = {key : val.node_visits for key, val in root.children.items()}
+        
+        if not action_counts:
+            valid_actions = self.game.get_valid_actions(root.state)
+            if len(valid_actions) == 0:
+                return None
+            else:
+                return np.random.choice(valid_actions)
+
         if temperature == 0:
             return max(action_counts, key=action_counts.get)
         elif temperature == np.inf:

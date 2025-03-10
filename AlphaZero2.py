@@ -7,12 +7,16 @@ from Evaluator import Evaluator
 from MCTS import MCTS, Config
 from Models import CNNModel
 
-@ray.remote(num_gpus=0.05)
+@ray.remote(num_gpus=0.1)
 class SampleGeneratorWorker:
     def __init__(self, config: Config, model_state_dict_ref):
         self.config = config
         self.model = CNNModel().to(self.config.device)
-        self.model.load_state_dict(model_state_dict_ref)
+        if isinstance(model_state_dict_ref, ray.ObjectRef):
+            state_dict = ray.get(model_state_dict_ref)
+        else:
+            state_dict = model_state_dict_ref
+        self.model.load_state_dict(state_dict)
         self.game = Connect4()
         self.mcts = MCTS(self.model, self.game, config)
 
@@ -22,6 +26,8 @@ class SampleGeneratorWorker:
         done = False
         while not done:
             action, root = self.mcts.search(state, self.config.mcts_start_search_iter)
+            if action is None:
+                break
             value = root.get_value()
             visits = np.zeros(self.config.n_cols)
             for child_action, child in root.children.items():
@@ -37,7 +43,11 @@ class SampleGeneratorWorker:
         return samples
 
     def update_model(self, model_state_dict_ref):
-        self.model.load_state_dict(ray.get(model_state_dict_ref))
+        if isinstance(model_state_dict_ref, ray.ObjectRef):
+            state_dict = ray.get(model_state_dict_ref)
+        else:
+            state_dict = model_state_dict_ref
+        self.model.load_state_dict(state_dict)
         self.mcts = MCTS(self.model, self.game, self.config)
 
 class AlphaZero2:
