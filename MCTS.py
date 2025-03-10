@@ -22,6 +22,9 @@ class Config:
     n_minibatches = 4
     learning_rate = 0.005
 
+    n_cols = 7
+    n_rows = 6
+
     mcts_start_search_iter = 30
     mcts_max_search_iter = 150
     mcts_search_increment = 1

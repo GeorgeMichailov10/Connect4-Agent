@@ -65,7 +65,7 @@ class AlphaZero2:
         self.verbose = verbose
         self.total_games = 0
 
-        #self.Evaluator = Evaluator(config)
+        self.Evaluator = Evaluator(config)
 
         ray.init(ignore_reinit_error=True)
         self.num_workers = self.config.cpu_procs
@@ -76,7 +76,8 @@ class AlphaZero2:
         ]
 
     def train(self):
-        for epoch in range(self.config.training_epochs):
+        epoch = 1
+        while epoch <= self.config.training_epochs:
             print(f"Starting epoch {epoch}")
             futures = [worker.self_play.remote() for worker in self.workers]
             results = ray.get(futures)
@@ -86,11 +87,12 @@ class AlphaZero2:
                     self.append_to_memory(*sample)
                     if self.memory_full:
                         self.learn()
+                        epoch += 1
 
-                        #model_performance = self.Evaluator.evaluate(self.model)
-                        #print(f"Model accuracy: {model_performance / 10}%")
-                        #if model_performance > 800:
-                         #   torch.save(self.model.state_dict(), f'./models/cnn_{epoch}_{model_performance}.pth')
+                        model_performance = self.Evaluator.evaluate(self.model)
+                        print(f"Model accuracy: {model_performance / 10}%")
+                        if model_performance > 800:
+                            torch.save(self.model.state_dict(), f'./models/cnn_{epoch}_{model_performance}.pth')
                         
                         model_state_ref = ray.put(self.model.state_dict())
                         update_futures = [worker.update_model.remote(model_state_ref) for worker in self.workers]
@@ -98,9 +100,9 @@ class AlphaZero2:
             self.search_iterations = min(self.config.mcts_max_search_iter, self.search_iterations + self.config.mcts_search_increment)
 
     def append_to_memory(self, states_stack, value, visits_stack):
-        state_tensor = torch.tensor(states_stack, dtype=torch.float).to(self.device)
-        visits_tensor = torch.tensor(visits_stack, dtype=torch.float).to(self.device)
-        value_tensor = torch.tensor([value, value], dtype=torch.float).to(self.device).unsqueeze(1)
+        state_tensor = torch.tensor(states_stack, dtype=torch.float).to(self.config.device)
+        visits_tensor = torch.tensor(visits_stack, dtype=torch.float).to(self.config.device)
+        value_tensor = torch.tensor([value, value], dtype=torch.float).to(self.config.device).unsqueeze(1)
         
         self.state_memory[self.current_memory_index:self.current_memory_index+2] = state_tensor
         self.value_memory[self.current_memory_index:self.current_memory_index+2] = value_tensor
