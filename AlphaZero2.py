@@ -17,7 +17,24 @@ class SampleGeneratorWorker:
         self.mcts = MCTS(self.model, self.game, config)
 
     def self_play(self):
-        pass
+        samples = []
+        state = self.game.reset()
+        done = False
+        while not done:
+            action, root = self.mcts.search(state, self.config.mcts_start_search_iter)
+            value = root.get_value()
+            visits = np.zeros(self.config.n_cols)
+            for child_action, child in root.children.items():
+                visits[child_action] = child.node_visits
+            visits /= np.sum(visits)
+            encoded_state = np.array(self.game.encode_state_cnn(state))
+            encoded_state_augmented = np.array(self.game.encode_state_cnn(state[:, ::-1]))
+            states_stack = np.stack((encoded_state, encoded_state_augmented), axis=0)
+            visits_stack = np.stack((visits, visits[::-1]), axis=0)
+            samples.append((states_stack, value.cpu().item(), visits_stack))
+            state, _, done = self.game.play_action(state, action)
+            state = -state
+        return samples
 
     def update_model(self, model_state_dict_ref):
         self.model.load_state_dict(ray.get(model_state_dict_ref))
@@ -48,6 +65,8 @@ class AlphaZero2:
         self.verbose = verbose
         self.total_games = 0
 
+        self.Evaluator = Evaluator()
+
         ray.init(ignore_reinit_error=True)
         self.num_workers = self.config.cpu_procs
         model_state_ref = ray.put(self.model.state_dict())
@@ -56,9 +75,8 @@ class AlphaZero2:
             for _ in range(self.num_workers)
         ]
 
-    # TODO: Save model
-    def train(self, epochs):
-        for epoch in range(epochs):
+    def train(self):
+        for epoch in range(self.config.training_epochs):
             futures = [worker.self_play_loop.remote() for worker in self.workers]
             results = ray.get(futures)
             for worker_samples in results:
@@ -67,13 +85,14 @@ class AlphaZero2:
                     if self.memory_full:
                         self.learn()
 
+                        model_performance = self.Evaluator.evaluate(self.model)
+                        if model_performance > 800:
+                            torch.save(self.model.state_dict(), f'./models/cnn_{epoch}_{model_performance}.pth')
+                        
                         model_state_ref = ray.put(self.model.state_dict())
                         update_futures = [worker.update_model.remote(model_state_ref) for worker in self.workers]
                         ray.get(update_futures)
-            self.search_iterations = min(
-                self.config.mcts_max_search_iter, 
-                self.search_iterations + self.config.mcts_search_increment
-            )
+            self.search_iterations = min(self.config.mcts_max_search_iter, self.search_iterations + self.config.mcts_search_increment)
 
     def append_to_memory(self, states_stack, value, visits_stack):
         state_tensor = torch.tensor(states_stack, dtype=torch.float).to(self.device)

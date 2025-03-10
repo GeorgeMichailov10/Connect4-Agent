@@ -1,13 +1,13 @@
-from AlphaZero import AlphaZero
+from Connect4 import Connect4
+from MCTS import Config
 import random
 import torch
 import numpy as np
 
 class Evaluator:
-    def __init__(self, alphazero: AlphaZero, num_examples=500, verbose=True):
-        self.model = alphazero.model
-        self.game = alphazero.game
-        self.config = alphazero.config
+    def __init__(self, config: Config, num_examples=500, verbose=True):
+        self.game = Connect4()
+        self.config = config
         self.accuracies = []
         self.num_examples = num_examples
         self.verbose = verbose
@@ -73,10 +73,10 @@ class Evaluator:
                 state = next_state
         return examples
 
-    def evaluate(self):
+    def evaluate(self, model):
         with torch.no_grad():
-            self.model.eval()
-            _, logits = self.model(self.X_target)
+            model.eval()
+            _, logits = model(self.X_target)
             pred_actions = logits.argmax(dim=1)
             accuracy = (pred_actions == self.y_target).float().mean().item()     
         self.accuracies.append(accuracy)
