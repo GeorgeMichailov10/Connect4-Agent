@@ -21,6 +21,10 @@ class Config:
     minibatch_size = 128
     n_minibatches = 8
     learning_rate = 0.001
+    n_filters = 128
+    n_res_blocks = 8
+    n_cols = 7
+    n_rows = 6
 
     n_cols = 7
     n_rows = 6
