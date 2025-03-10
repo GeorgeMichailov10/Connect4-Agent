@@ -8,7 +8,7 @@ import math
 
 @dataclass
 class Config:
-    cpu_procs = 20
+    cpu_procs = 4
 
     device = 'cuda'
     exploration_constant = 2

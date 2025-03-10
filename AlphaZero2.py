@@ -7,7 +7,7 @@ from Evaluator import Evaluator
 from MCTS import MCTS, Config
 from Models import CNNModel
 
-@ray.remote
+@ray.remote(num_gpus=0.05)
 class SampleGeneratorWorker:
     def __init__(self, config: Config, model_state_dict_ref):
         self.config = config
@@ -65,7 +65,7 @@ class AlphaZero2:
         self.verbose = verbose
         self.total_games = 0
 
-        self.Evaluator = Evaluator(config)
+        #self.Evaluator = Evaluator(config)
 
         ray.init(ignore_reinit_error=True)
         self.num_workers = self.config.cpu_procs
@@ -87,10 +87,10 @@ class AlphaZero2:
                     if self.memory_full:
                         self.learn()
 
-                        model_performance = self.Evaluator.evaluate(self.model)
-                        print(f"Model accuracy: {model_performance / 10}%")
-                        if model_performance > 800:
-                            torch.save(self.model.state_dict(), f'./models/cnn_{epoch}_{model_performance}.pth')
+                        #model_performance = self.Evaluator.evaluate(self.model)
+                        #print(f"Model accuracy: {model_performance / 10}%")
+                        #if model_performance > 800:
+                         #   torch.save(self.model.state_dict(), f'./models/cnn_{epoch}_{model_performance}.pth')
                         
                         model_state_ref = ray.put(self.model.state_dict())
                         update_futures = [worker.update_model.remote(model_state_ref) for worker in self.workers]

@@ -14,4 +14,4 @@ alphazero = AlphaZero2(game, config)
 
 
 for epoch in range(config.training_epochs):
-    alphazero.train(1)
+    alphazero.train()
