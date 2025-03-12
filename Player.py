@@ -35,7 +35,7 @@ class Agent:
             return self.select_action_with_mcts(state)
 
     def select_action_without_mcts(self, state):
-        state_tensor = torch.tensor(self.game.encode_state_cnn(state), dtype=torch.float).to(self.config.device)
+        state_tensor = torch.tensor(self.game.encode_state_cnn(state), dtype=torch.float).unsqueeze(0).to(self.config.device)
         with torch.no_grad():
             value, policy = self.model(state_tensor)
 

@@ -55,5 +55,8 @@ class Connect4:
         tokens = tokens.reshape(-1, 3)
         return tokens  # Returns (self.rows * self.cols, 3)
     
+    def flip_board(self, state):
+        return state * -1
+
     def reset(self):
         return np.zeros([self.rows, self.cols], dtype=np.int8)

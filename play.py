@@ -3,7 +3,7 @@ from Connect4 import Connect4
 from MCTS import Config
 
 config = Config()
-agent = Agent(config, './models/cnn_134_845.pth')
+agent = Agent(config, './models/cnn_134_845.pth', difficulty='hard')
 
 state = Connect4().reset()
 done = False
@@ -20,10 +20,10 @@ while not done:
         print("MODEL CHOSE:", action)
 
     next_state, reward, done = Connect4().play_action(state, action)
+    state = Connect4().flip_board(next_state)
 
     if done == True:
         print('Game over')
     else:
-        state = -next_state
         turn = 1 - turn
     print(turn)
