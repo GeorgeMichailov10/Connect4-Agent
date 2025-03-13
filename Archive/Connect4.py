@@ -6,6 +6,8 @@ class Connect4:
         self.rows = 6
         self.cols = 7
 
+    #--------------------------------
+
     def get_next_state(self, state, action, player_value=1):
         legal_moves = self.get_valid_actions(state)
         if action not in legal_moves:
