@@ -2,9 +2,10 @@ from .Connect4 import Connect4
 import random
 import json
 import os
+import re
 
 class TDLAgent:
-    def __init__(self, lam, learning_rate=0.1, discount_factor=1.0, explore_rate=0.1, value_function_path = None):
+    def __init__(self, lam=1, learning_rate=0.1, discount_factor=1.0, explore_rate=0.1, value_function_path = None):
         self.value_function = {}
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
@@ -34,8 +35,21 @@ class TDLAgent:
         print(f"Value function saved to {path}")
 
     def load_value_function(self, path):
+        filename = os.path.basename(path)
+        match = re.search(r"l_([\d_]+)_lr_([\d_]+)_df_([\d_]+)_er_([\d_]+)", filename)
+
+        if match:
+            self.lam = float(match.group(1).replace("_", "."))
+            self.learning_rate = float(match.group(2).replace("_", "."))
+            self.discount_factor = float(match.group(3).replace("_", "."))
+            self.explore_rate = float(match.group(4).replace("_", "."))
+        else:
+            raise ValueError(f"Invalid filename format: {filename}")
+
         with open(path, 'r') as f:
             self.value_function = json.load(f)
+
+        print(f"Loaded value function and parameters: lam={self.lam}, lr={self.learning_rate}, df={self.discount_factor}, er={self.explore_rate}")
    
     def get_action(self, state):
         actions = self.game.get_valid_actions(state)
