@@ -3,7 +3,7 @@ from Agents.TemporalDifferenceLearning import TDLAgent
 
 
 
-agent = TDLAgent(value_function_path='./Agents/TDL_Value_Functions/l_15_lr_0_1_df_0_95_er_0_1.json')
+agent = TDLAgent(value_function_path='./Agents/TDL_Value_Functions/l_10_lr_0_001_df_0_8_er_0_2.json')
 
 state = Connect4().empty_board()
 done = False
