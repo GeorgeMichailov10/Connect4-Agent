@@ -45,8 +45,9 @@ class QLearningAgent:
         path = os.path.join(directory, filename)
         os.makedirs(directory, exist_ok=True)
 
+        serializable_Q_table = {k: v.tolist() for k, v in self.Q_table.items()}
         with open(path, "w") as f:
-            json.dump(self.Q_table, f)
+            json.dump(serializable_Q_table, f)
         print(f"Value function saved to {path}")
 
     def get_q_values(self, state):
@@ -55,7 +56,7 @@ class QLearningAgent:
             self.Q_table[key] = np.zeros(self.game.cols)
         return self.Q_table[key]
     
-    def choose_action(self, state):
+    def get_action(self, state):
         valid_actions = self.game.get_valid_actions(state)
         if len(valid_actions) == 0:
             return None
@@ -77,13 +78,13 @@ class QLearningAgent:
             target = reward + self.discount_factor * np.max(next_q_values)
         q_values[action] += self.learning_rate * (target - q_values[action])
 
-    def self_play(self, games, decay_rate=0.999):
+    def self_play(self, games, decay_rate=0.95):
         for game in range(games):
             state = self.game.empty_board()
             done = False
 
             while not done:
-                action = self.choose_action(state)
+                action = self.get_action(state)
                 next_state, reward, done = self.game.play_action(state, action)
                 self.update(state, action, reward, next_state, done)
         
